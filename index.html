@@ -3,14 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quanta Invoice Generator</title>
+    <title>Quanta Invoice Generator Pro</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: #f5f5f5; color: #333; }
-        .container { display: grid; grid-template-columns: 320px 1fr; gap: 0; min-height: 100vh; }
+        .container { display: grid; grid-template-columns: 340px 1fr; gap: 0; min-height: 100vh; }
         .panel { background: white; border-right: 1px solid #e5e5e5; padding: 20px; overflow-y: auto; max-height: 100vh; }
-        .panel h1 { font-size: 16px; margin-bottom: 20px; }
-        .section { margin-bottom: 20px; }
+        .panel h1 { font-size: 16px; margin-bottom: 16px; color: #000; }
+        .section { margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid #f0f0f0; }
+        .section:last-child { border-bottom: none; }
         .section-label { font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block; }
         input, textarea, select { width: 100%; font-family: inherit; font-size: 13px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 8px; }
         input:focus, textarea:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
@@ -21,13 +23,16 @@
         .btn-primary:hover { background: #eff6ff; }
         .btn-print { border-color: #16a34a; color: #16a34a; width: 100%; justify-content: center; }
         .btn-print:hover { background: #f0fdf4; }
-        .btn-small { padding: 6px 10px; font-size: 11px; }
+        .btn-upload { border-color: #f59e0b; color: #f59e0b; width: 100%; justify-content: center; }
+        .btn-upload:hover { background: #fffbeb; }
+        .file-input { display: none; }
+        .file-label { display: inline-block; width: 100%; }
         .item-card { background: #fafafa; border: 1px solid #eee; border-radius: 4px; padding: 12px; margin-bottom: 10px; position: relative; }
         .item-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
         .field-label { font-size: 11px; color: #666; font-weight: 500; margin-bottom: 4px; display: block; }
         .remove-btn { position: absolute; top: 8px; right: 8px; background: none; border: none; cursor: pointer; color: #999; font-size: 16px; padding: 4px; opacity: 0; transition: opacity 0.15s; }
         .item-card:hover .remove-btn { opacity: 1; }
-        .signer-section { background: #f0f7ff; border-left: 3px solid #3b82f6; padding: 12px; border-radius: 4px; margin-top: 12px; }
+        .signer-section { background: #f0f7ff; border-left: 3px solid #3b82f6; padding: 12px; border-radius: 4px; margin-top: 8px; }
         .preview-area { background: #f0f0f0; padding: 30px; overflow-y: auto; display: flex; justify-content: center; align-items: flex-start; }
         .invoice { background: white; width: 100%; max-width: 680px; padding: 32px 40px; font-family: 'Calibri', Arial, sans-serif; font-size: 9px; color: #000; line-height: 1.4; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .inv-title { text-align: center; font-size: 14px; font-weight: bold; border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; padding: 8px 0; margin: 10px 0 15px; }
@@ -37,7 +42,7 @@
         .inv-table .total-row td { border-top: 1.5px solid #000; font-weight: bold; padding: 8px 5px; }
         .inv-addr-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
         .inv-addr-table td { border: 1px solid #000; padding: 10px; vertical-align: top; font-size: 8.5px; line-height: 1.6; width: 50%; }
-        .say-total { font-weight: bold; font-size: 8.5px; padding: 8px 0; border-bottom: 0.5px solid #ccc; margin-bottom: 12px; }
+        .say-total { display: none; }
         .banking { margin-bottom: 20px; }
         .banking-title { font-weight: bold; font-size: 8.5px; margin-bottom: 4px; }
         .banking-line { font-size: 8px; padding-left: 16px; line-height: 1.6; }
@@ -45,16 +50,23 @@
         .sig-inner { display: inline-block; border-top: 1px solid #000; padding-top: 6px; min-width: 160px; text-align: center; }
         .sig-company { font-weight: bold; font-size: 8.5px; }
         .sig-name { font-size: 11px; font-style: italic; font-family: Georgia, serif; margin-top: 4px; }
-        .parse-error { color: #dc2626; font-size: 11px; margin-top: 6px; }
-        .api-key-hint { font-size: 10px; color: #666; margin-top: 4px; line-height: 1.4; }
+        .alert { padding: 10px; border-radius: 4px; margin-bottom: 12px; font-size: 12px; }
+        .alert-info { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+        .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        .alert-success { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 12px; border-bottom: 1px solid #e5e5e5; }
+        .tab { padding: 8px 12px; cursor: pointer; border: none; background: none; color: #666; font-size: 12px; font-weight: 500; border-bottom: 2px solid transparent; }
+        .tab.active { color: #3b82f6; border-bottom-color: #3b82f6; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
         @media (max-width: 1000px) {
             .container { grid-template-columns: 1fr; }
             .panel { max-height: auto; border-right: none; border-bottom: 1px solid #e5e5e5; }
             .preview-area { min-height: 600px; }
         }
         @media print {
-            .panel, .btn-print { display: none !important; }
+            .panel, .btn-print, .tabs, .tab { display: none !important; }
             .container { grid-template-columns: 1fr; }
             .invoice { box-shadow: none; padding: 0; max-width: 100%; }
             body { background: white; }
@@ -65,45 +77,73 @@
 
 <div class="container">
     <div class="panel">
-        <div class="header-row">
-            <h1>Invoice Generator</h1>
-            <button class="btn btn-print" onclick="window.print()">🖨️ Print PDF</button>
+        <h1>Invoice Generator</h1>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('setup')">Setup</button>
+            <button class="tab" onclick="switchTab('details')">Details</button>
         </div>
 
-        <div class="section">
-            <label class="section-label">Invoice Details</label>
-            <input type="text" id="inv-no" value="5S800-2026062304" placeholder="Invoice No" oninput="render()">
-            <input type="text" id="po-no" value="" placeholder="PO No (e.g. 1104602)" oninput="render()">
-            <input type="text" id="issue-date" oninput="render()">
-        </div>
+        <!-- SETUP TAB -->
+        <div id="setup" class="tab-content active">
+            <div class="alert alert-info">📋 Configure your company info and upload PO to auto-generate invoice</div>
 
-        <div class="section">
-            <label class="section-label">Ship To Address</label>
-            <textarea id="ship-to" oninput="render()">Tighe Warehouse Field Service
-481 Wildwood Ave
-Woburn, MA 01801</textarea>
-        </div>
-
-        <div class="section">
-            <label class="section-label">AI Parse PO (Optional)</label>
-            <textarea id="po-paste" placeholder="Paste full PO text here, then click Parse →"></textarea>
-            <div id="parse-error" class="parse-error" style="display:none"></div>
-            <button class="btn btn-primary" style="width:100%; justify-content:center; margin-top:8px" onclick="parsePO()">✨ Parse PO</button>
-            <div class="api-key-hint">ℹ️ To use AI parsing, set your Anthropic API key in the console or remove this PO section and add items manually.</div>
-        </div>
-
-        <div class="section">
-            <div class="header-row">
-                <label class="section-label" style="margin-bottom:0">Line Items</label>
-                <button class="btn btn-primary btn-small" onclick="addItem()">+ Add</button>
+            <div class="section">
+                <label class="section-label">Your Company Name</label>
+                <input type="text" id="company-name" value="Quanta Computer Inc." oninput="render()">
             </div>
-            <div id="items-list"></div>
+
+            <div class="section">
+                <label class="section-label">Your Company Address</label>
+                <textarea id="company-addr" oninput="render()">No.211, Wenhua 2nd Rd., Guishan Dist.
+Taoyuan City 33377
+Taiwan</textarea>
+            </div>
+
+            <div class="section">
+                <label class="section-label">Attn (Contact Person Name)</label>
+                <input type="text" id="company-attn" value="Jassy Chang" oninput="render()">
+            </div>
+
+            <div class="section">
+                <label class="section-label">📄 Upload Purchase Order (PDF)</label>
+                <label class="btn btn-upload file-label">
+                    📤 Choose PO File
+                    <input type="file" id="po-file" class="file-input" accept=".pdf" onchange="handlePOUpload(event)">
+                </label>
+                <div id="upload-status" style="margin-top:8px; font-size:12px;"></div>
+            </div>
         </div>
 
-        <div class="signer-section">
-            <label class="field-label" style="margin-bottom:6px">Signed By</label>
-            <input type="text" id="signer" value="Jassy Chang" oninput="render()" style="margin-bottom:6px">
-            <small style="color:#666">↓ This name appears on the invoice header and signature block</small>
+        <!-- DETAILS TAB -->
+        <div id="details" class="tab-content">
+            <div class="section">
+                <label class="section-label">Invoice Details</label>
+                <input type="text" id="inv-no" value="5S800-2026062307" placeholder="Invoice No" oninput="render()">
+                <input type="text" id="po-no" value="" placeholder="PO No" oninput="render()">
+                <input type="text" id="issue-date" oninput="render()">
+            </div>
+
+            <div class="section">
+                <label class="section-label">Ship To Address</label>
+                <textarea id="ship-to" oninput="render()"></textarea>
+            </div>
+
+            <div class="section">
+                <div class="header-row">
+                    <label class="section-label" style="margin-bottom:0">Line Items</label>
+                    <button class="btn btn-primary" style="padding:6px 10px; font-size:11px" onclick="addItem()">+ Add</button>
+                </div>
+                <div id="items-list"></div>
+            </div>
+
+            <div class="signer-section">
+                <label class="field-label" style="margin-bottom:6px">Signed By</label>
+                <input type="text" id="signer" value="Jassy Chang" oninput="render()" style="margin-bottom:6px">
+                <small style="color:#666">↓ Appears on invoice</small>
+            </div>
+
+            <button class="btn btn-print" onclick="window.print()" style="margin-top:16px">🖨️ Print PDF</button>
         </div>
     </div>
 
@@ -113,6 +153,8 @@ Woburn, MA 01801</textarea>
 </div>
 
 <script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
 const BANKING = [
     '1. BENEFICIARY A/C: QUANTA COMPUTER INC.',
     '2. A/C NO: 123-51-000006-1',
@@ -154,6 +196,13 @@ function esc(s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById(tab).classList.add('active');
+}
+
 let items = [];
 let nextId = 1;
 
@@ -170,15 +219,18 @@ function renderItemsList() {
             <div class="item-grid">
                 <div><label class="field-label">Category</label><input value="${esc(it.category)}" oninput="updateItem(${it.id},'category',this.value)"></div>
                 <div><label class="field-label">Description</label><input value="${esc(it.description)}" oninput="updateItem(${it.id},'description',this.value)"></div>
-                <div><label class="field-label">Unit Price (USD)</label><input type="number" step="0.01" value="${esc(it.unitPrice)}" oninput="updateItem(${it.id},'unitPrice',this.value)"></div>
+                <div><label class="field-label">Unit Price</label><input type="number" step="0.01" value="${esc(it.unitPrice)}" oninput="updateItem(${it.id},'unitPrice',this.value)"></div>
                 <div><label class="field-label">Qty</label><input type="number" step="1" value="${esc(it.qty)}" oninput="updateItem(${it.id},'qty',this.value)"></div>
             </div>
-            ${items.length > 1 ? `<button class="remove-btn" onclick="removeItem(${it.id})" title="Remove">✕</button>` : ''}
+            ${items.length > 1 ? `<button class="remove-btn" onclick="removeItem(${it.id})">✕</button>` : ''}
         </div>
     `).join('');
 }
 
 function render() {
+    const companyName = document.getElementById('company-name').value;
+    const companyAddr = document.getElementById('company-addr').value;
+    const companyAttn = document.getElementById('company-attn').value;
     const invNo = document.getElementById('inv-no').value;
     const poNo = document.getElementById('po-no').value;
     const date = document.getElementById('issue-date').value;
@@ -187,6 +239,7 @@ function render() {
     const total = items.reduce((s, it) => s + (+it.unitPrice || 0) * (+it.qty || 0), 0);
 
     const addrLines = shipTo.split('\n').map(l => `<span>${esc(l.trim())}</span>`).join('<br>');
+    const companyAddrLines = companyAddr.split('\n').map(l => esc(l.trim())).join('<br>');
 
     const rows = items.map(it => {
         const amt = (+it.unitPrice || 0) * (+it.qty || 0);
@@ -206,7 +259,7 @@ function render() {
         <table style="width:100%;border-collapse:collapse;margin-bottom:8px"><tbody><tr>
             <td style="width:40%;vertical-align:top"></td>
             <td style="vertical-align:top;text-align:right;font-size:8.5px;line-height:1.6">
-                <strong>Quanta Computer Inc.</strong><br>No.211, Wen Hwa 2nd Rd.,<br>Kuei Shan District,<br>Taoyuan City 33377, Taiwan<br><strong>Attn: ${esc(signer)}</strong>
+                <strong>${esc(companyName)}</strong><br>${companyAddrLines}<br><strong>Attn: ${esc(companyAttn)}</strong>
             </td>
         </tr></tbody></table>
 
@@ -215,8 +268,8 @@ function render() {
         <div style="font-size:10px;font-weight:bold;margin-bottom:10px;padding-bottom:8px;border-bottom:0.5px solid #ccc">Invoice No: ${esc(invNo)}</div>
 
         <table class="inv-addr-table"><tbody><tr>
-            <td><strong>Purchase Order</strong><br>To: ${addrLines}</td>
-            <td><strong>P/O No:</strong> ${esc(poNo)}<br><strong>Issue Date:</strong> ${esc(date)}<br><strong>Currency:</strong> USD</td>
+            <td><strong>Purchase Order</strong><br>To: ${addrLines || '<em>Ship to address pending</em>'}</td>
+            <td><strong>P/O No:</strong> ${esc(poNo) || '<em>pending</em>'}<br><strong>Issue Date:</strong> ${esc(date)}<br><strong>Currency:</strong> USD</td>
         </tr></tbody></table>
 
         <table class="inv-table"><thead><tr>
@@ -226,7 +279,7 @@ function render() {
             <th style="width:10%">Q'ty</th>
             <th style="width:17%">Amount</th>
         </tr></thead><tbody>
-            ${rows}
+            ${rows || '<tr><td colspan="5" style="text-align:center;padding:20px;color:#999">No line items yet. Click + Add to begin.</td></tr>'}
             <tr class="total-row">
                 <td colspan="3" style="text-align:right;font-size:9.5px">Total</td>
                 <td colspan="2" style="text-align:right;font-size:10px">USD ${fmt(total)}</td>
@@ -242,12 +295,82 @@ function render() {
 
         <div class="sig-block">
             <div class="sig-inner">
-                <div class="sig-company">Quanta Computer Inc.</div>
+                <div class="sig-company">${esc(companyName)}</div>
                 <div class="sig-name">${esc(signer)}</div>
             </div>
         </div>
         </div>
     `;
+}
+
+async function handlePOUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const status = document.getElementById('upload-status');
+    status.textContent = '⏳ Parsing PDF...';
+    status.style.color = '#1e40af';
+
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = '';
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const text = await page.getTextContent();
+            fullText += text.items.map(item => item.str).join(' ') + '\n';
+        }
+
+        // Extract key info
+        const poMatch = fullText.match(/(?:PO|Purchase Order)\s*[#:]*\s*(\d+)/i);
+        const poNo = poMatch ? poMatch[1] : '';
+
+        // Try to extract ship to address
+        let shipTo = '';
+        const shipMatch = fullText.match(/Ship[- ]?[Tt]o[:\s]+([^\n]+(?:\n[^\n]+){0,3})/);
+        if (shipMatch) shipTo = shipMatch[1].trim();
+
+        // Extract line items (simple pattern)
+        const items_new = [];
+        const lines = fullText.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            // Look for lines with quantity and price
+            const match = line.match(/(.+?)\s+(\d+(?:\.\d+)?)\s+\$?([\d,]+\.?\d*)/);
+            if (match && !line.includes('Invoice') && !line.includes('Total')) {
+                const desc = match[1].trim().substring(0, 60);
+                const qty = parseInt(match[2]);
+                const price = parseFloat(match[3].replace(',', ''));
+                if (desc.length > 3 && qty > 0 && price > 0) {
+                    items_new.push({
+                        id: nextId++,
+                        category: 'Item',
+                        description: desc,
+                        unitPrice: price.toString(),
+                        qty: qty
+                    });
+                }
+            }
+        }
+
+        // Update form
+        if (poNo) document.getElementById('po-no').value = poNo;
+        if (shipTo) document.getElementById('ship-to').value = shipTo;
+        if (items_new.length > 0) {
+            items = items_new;
+            renderItemsList();
+        }
+
+        status.textContent = `✅ Parsed! Found PO #${poNo}, ${items_new.length} item(s)`;
+        status.style.color = '#166534';
+        render();
+        switchTab('details');
+    } catch (err) {
+        status.textContent = `❌ Parse failed: ${err.message}. Enter details manually.`;
+        status.style.color = '#991b1b';
+        console.error(err);
+    }
 }
 
 const today = new Date();
@@ -256,61 +379,6 @@ document.getElementById('issue-date').value = `${today.getFullYear()}/${String(t
 items = [newItem()];
 renderItemsList();
 render();
-
-async function parsePO() {
-    const txt = document.getElementById('po-paste').value.trim();
-    if (!txt) {
-        alert('Paste PO text first');
-        return;
-    }
-    const errEl = document.getElementById('parse-error');
-    errEl.style.display = 'none';
-    const btn = event.target;
-    const orig = btn.textContent;
-    btn.textContent = 'Parsing...';
-    btn.disabled = true;
-
-    try {
-        const resp = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': 'your-api-key-here' // User needs to replace this
-            },
-            body: JSON.stringify({
-                model: 'claude-sonnet-4-6',
-                max_tokens: 1000,
-                system: 'Extract invoice data from this Purchase Order. Return ONLY valid JSON with NO markdown fences. Shape: {"poNo":"","items":[{"category":"","description":"","unitPrice":0,"qty":1}]}',
-                messages: [{ role: 'user', content: txt }]
-            })
-        });
-        const data = await resp.json();
-        if (!data.content) throw new Error('No response from API');
-        const raw = data.content.map(b => b.text || '').join('');
-        const parsed = JSON.parse(raw);
-        if (parsed.poNo) document.getElementById('po-no').value = parsed.poNo;
-        if (parsed.items?.length) {
-            items = parsed.items.map(it => ({ id: nextId++, category: it.category || '', description: it.description || '', unitPrice: String(it.unitPrice || ''), qty: it.qty || 1 }));
-            renderItemsList();
-        }
-        document.getElementById('po-paste').value = '';
-        render();
-    } catch (e) {
-        errEl.textContent = '❌ Parse failed: Check your API key or PO text format. For now, add items manually.';
-        errEl.style.display = 'block';
-        console.error(e);
-    }
-    btn.textContent = orig;
-    btn.disabled = false;
-}
-
-// Quick setup
-console.log('%cQuanta Invoice Generator loaded!', 'color: #3b82f6; font-size: 14px; font-weight: bold');
-console.log('To use AI parsing:');
-console.log('1. Get API key from https://console.anthropic.com');
-console.log('2. Find line "x-api-key": "your-api-key-here" in the code');
-console.log('3. Replace with your actual API key');
-console.log('Or just add items manually with the + Add button');
 </script>
 
 </body>
