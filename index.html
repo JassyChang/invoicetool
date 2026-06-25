@@ -109,6 +109,16 @@ Taiwan</textarea>
             </div>
 
             <div class="section">
+                <label class="section-label">Company Logo</label>
+                <label class="btn btn-upload file-label">
+                    🖼️ Upload Logo (PNG/JPG)
+                    <input type="file" id="logo-file" class="file-input" accept=".png,.jpg,.jpeg" onchange="handleLogoUpload(event)">
+                </label>
+                <small style="color:#666; display:block; margin-top:6px;">Logo will appear on left side of invoice header</small>
+                <div id="logo-status" style="margin-top:6px; font-size:12px;"></div>
+            </div>
+
+            <div class="section">
                 <label class="section-label">Banking Information</label>
                 <div class="checkbox-row">
                     <input type="checkbox" id="show-banking" checked onchange="render()">
@@ -274,8 +284,10 @@ function render() {
     document.getElementById('invoice-preview').innerHTML = `
         <div>
         <table style="width:100%;border-collapse:collapse;margin-bottom:8px"><tbody><tr>
-            <td style="width:40%;vertical-align:top"></td>
-            <td style="vertical-align:top;text-align:right;font-size:8.5px;line-height:1.6">
+            <td style="width:40%;vertical-align:top;padding-right:10px;">
+                ${logoData ? `<img src="${logoData}" style="width:100%;max-width:180px;height:auto;display:block;">` : ''}
+            </td>
+            <td style="width:60%;vertical-align:top;text-align:right;font-size:8.5px;line-height:1.6">
                 <strong>${esc(companyName)}</strong><br>${companyAddrLines}<br><strong>Attn: ${esc(companyAttn)}</strong>
             </td>
         </tr></tbody></table>
@@ -314,6 +326,30 @@ function render() {
         </div>
         </div>
     `;
+}
+
+let logoData = 'data:image/png;base64,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';
+
+async function handleLogoUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const status = document.getElementById('logo-status');
+    
+    try {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            logoData = e.target.result; // Store as base64
+            status.textContent = `✅ Logo uploaded: ${file.name}`;
+            status.style.color = '#166534';
+            render();
+        };
+        reader.readAsDataURL(file);
+    } catch (err) {
+        status.textContent = `❌ Logo upload failed`;
+        status.style.color = '#991b1b';
+        console.error(err);
+    }
 }
 
 async function handlePOUpload(event) {
