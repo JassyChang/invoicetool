@@ -17,6 +17,9 @@
         input, textarea, select { width: 100%; font-family: inherit; font-size: 13px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 8px; }
         input:focus, textarea:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
         textarea { resize: vertical; min-height: 70px; }
+        .checkbox-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .checkbox-row input[type="checkbox"] { width: auto; margin: 0; }
+        .checkbox-row label { margin: 0; font-size: 13px; cursor: pointer; }
         .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; background: white; color: #333; cursor: pointer; font-size: 12px; font-weight: 500; }
         .btn:hover { background: #f9f9f9; border-color: #999; }
         .btn-primary { border-color: #3b82f6; color: #3b82f6; }
@@ -42,14 +45,14 @@
         .inv-table .total-row td { border-top: 1.5px solid #000; font-weight: bold; padding: 8px 5px; }
         .inv-addr-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
         .inv-addr-table td { border: 1px solid #000; padding: 10px; vertical-align: top; font-size: 8.5px; line-height: 1.6; width: 50%; }
-        .say-total { display: none; }
         .banking { margin-bottom: 20px; }
         .banking-title { font-weight: bold; font-size: 8.5px; margin-bottom: 4px; }
         .banking-line { font-size: 8px; padding-left: 16px; line-height: 1.6; }
         .sig-block { text-align: right; margin-top: 20px; }
-        .sig-inner { display: inline-block; border-top: 1px solid #000; padding-top: 6px; min-width: 160px; text-align: center; }
-        .sig-company { font-weight: bold; font-size: 8.5px; }
-        .sig-name { font-size: 11px; font-style: italic; font-family: Georgia, serif; margin-top: 4px; }
+        .sig-inner { display: inline-block; text-align: center; }
+        .sig-name { font-size: 11px; font-style: italic; font-family: Georgia, serif; margin-bottom: 6px; min-width: 160px; display: block; }
+        .sig-line { border-top: 1px solid #000; width: 160px; height: 1px; margin: 0 auto; }
+        .sig-company { font-weight: bold; font-size: 8.5px; margin-top: 4px; }
         .alert { padding: 10px; border-radius: 4px; margin-bottom: 12px; font-size: 12px; }
         .alert-info { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
         .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
@@ -106,6 +109,14 @@ Taiwan</textarea>
             </div>
 
             <div class="section">
+                <label class="section-label">Banking Information</label>
+                <div class="checkbox-row">
+                    <input type="checkbox" id="show-banking" checked onchange="render()">
+                    <label for="show-banking">Show Quanta Banking Information on Invoice</label>
+                </div>
+            </div>
+
+            <div class="section">
                 <label class="section-label">📄 Upload Purchase Order (PDF)</label>
                 <label class="btn btn-upload file-label">
                     📤 Choose PO File
@@ -140,7 +151,7 @@ Taiwan</textarea>
             <div class="signer-section">
                 <label class="field-label" style="margin-bottom:6px">Signed By</label>
                 <input type="text" id="signer" value="Jassy Chang" oninput="render()" style="margin-bottom:6px">
-                <small style="color:#666">↓ Appears on invoice</small>
+                <small style="color:#666">↓ Handwritten signature on invoice</small>
             </div>
 
             <button class="btn btn-print" onclick="window.print()" style="margin-top:16px">🖨️ Print PDF</button>
@@ -236,6 +247,7 @@ function render() {
     const date = document.getElementById('issue-date').value;
     const shipTo = document.getElementById('ship-to').value;
     const signer = document.getElementById('signer').value;
+    const showBanking = document.getElementById('show-banking').checked;
     const total = items.reduce((s, it) => s + (+it.unitPrice || 0) * (+it.qty || 0), 0);
 
     const addrLines = shipTo.split('\n').map(l => `<span>${esc(l.trim())}</span>`).join('<br>');
@@ -252,7 +264,12 @@ function render() {
         </tr>`;
     }).join('');
 
-    const bankLines = BANKING.map(l => `<div class="banking-line">${esc(l)}</div>`).join('');
+    const bankingSection = showBanking ? `
+        <div class="banking">
+            <div class="banking-title">Quanta Banking Information:</div>
+            ${BANKING.map(l => `<div class="banking-line">${esc(l)}</div>`).join('')}
+        </div>
+    ` : '';
 
     document.getElementById('invoice-preview').innerHTML = `
         <div>
@@ -286,17 +303,13 @@ function render() {
             </tr>
         </tbody></table>
 
-        <div class="say-total">${amtWords(total)}</div>
-
-        <div class="banking">
-            <div class="banking-title">Quanta Banking Information:</div>
-            ${bankLines}
-        </div>
+        ${bankingSection}
 
         <div class="sig-block">
             <div class="sig-inner">
+                <span class="sig-name">${esc(signer)}</span>
+                <div class="sig-line"></div>
                 <div class="sig-company">${esc(companyName)}</div>
-                <div class="sig-name">${esc(signer)}</div>
             </div>
         </div>
         </div>
